@@ -1,0 +1,119 @@
+High - Around 2.5 - 3 hrs
+
+    CHUNK_SIZE = 24
+    CHUNK_STEP = 12      
+
+    # Pipeline 1: Trend Analysis
+    TREND_BATCH_SIZE = 32    
+
+    # Pipeline 2: Anomaly Detection
+    RECENT_YEAR_THRESHOLD = 2024
+    MIN_RECUR_YEARS = 3
+    MIN_TEMPORAL_SPAN = 3
+    CORR_THRESHOLD = 0.95
+    MIN_CORR_CONSISTENCY = 0.92
+    CLUSTER_EPS = 8
+    CLUSTER_MIN_SAMPLES = 2
+    MIN_CLUSTER_LINEAR_LENGTH = 15
+    MIN_CLUSTER_AREA_SIZE = 8
+    MIN_CLUSTER_SIZE = 1
+    MIN_SPATIAL_DENSITY = 0.025
+    MAX_CLUSTER_BBOX_SIZE = 250
+    MIN_LINEAR_ASPECT_RATIO = 4
+    MIN_SIGNAL_VARIANCE = 0.05
+    MIN_SIGNAL_RANGE = 0.1
+    MAX_NOISE_RATIO = 0.3
+
+    # Pipeline 3: Pattern Recognition
+    PATCH_SIZE = 10
+    STRIDE = 16
+    BATCH_SIZE = 24
+    PCA_DIM = 24
+
+    # Pipeline 4: Predictive Modeling
+    MIN_YEARS_REQ = 2
+    N_ESTIMATORS = 150   
+    MAX_DEPTH = 10
+    LEARNING_RATE = 0.02   
+    N_SPLITS = 4         
+    TEST_SIZE = 0.15         
+
+Medium: 
+     # Keep Pipelines 1 & 2 same (they're already fast)
+    CHUNK_SIZE = 24
+    CHUNK_STEP = 24         # DOUBLED: Skip even more chunks
+    
+    TREND_BATCH_SIZE = 64   # DOUBLED: Larger batches
+    
+    # Pipeline 2: Slightly relaxed for faster processing
+    RECENT_YEAR_THRESHOLD = 2023  # RELAXED: Still recent but includes more data
+    MIN_RECUR_YEARS = 2           # RELAXED: Faster filtering
+    MIN_TEMPORAL_SPAN = 2         # RELAXED: Faster filtering
+    CORR_THRESHOLD = 0.85         # RELAXED: Still high quality but faster
+    MIN_CORR_CONSISTENCY = 0.85   # RELAXED
+    CLUSTER_EPS = 12              # RELAXED: Larger clusters = fewer to process
+    CLUSTER_MIN_SAMPLES = 2
+    MIN_CLUSTER_LINEAR_LENGTH = 10  # RELAXED
+    MIN_CLUSTER_AREA_SIZE = 6       # RELAXED
+    MIN_CLUSTER_SIZE = 1
+    MIN_SPATIAL_DENSITY = 0.015     # RELAXED
+    MAX_CLUSTER_BBOX_SIZE = 200     # SMALLER: Skip very large patterns
+    MIN_LINEAR_ASPECT_RATIO = 3     # RELAXED
+    MIN_SIGNAL_VARIANCE = 0.03      # RELAXED
+    MIN_SIGNAL_RANGE = 0.08         # RELAXED
+    MAX_NOISE_RATIO = 0.4           # RELAXED
+    
+    # Pipeline 3: MAJOR SPEED OPTIMIZATIONS
+    PATCH_SIZE = 16         # LARGER: 60% fewer patches (10→16)
+    STRIDE = 32             # DOUBLED: 75% fewer patches total
+    BATCH_SIZE = 64         # TRIPLED: Much faster GPU utilization
+    PCA_DIM = 16            # REDUCED: Faster dimensionality reduction
+    
+    # Pipeline 4: MAJOR SPEED OPTIMIZATIONS  
+    MIN_YEARS_REQ = 2
+    N_ESTIMATORS = 50       # 1/3 LESS: Much faster training
+    MAX_DEPTH = 6           # REDUCED: Faster trees
+    LEARNING_RATE = 0.05    # HIGHER: Faster convergence
+    N_SPLITS = 3            # REDUCED: Less cross-validation
+    TEST_SIZE = 0.25        # LARGER: Less training data = faster
+
+Low: 
+     # Pipelines 1 & 2: More aggressive sampling
+    CHUNK_SIZE = 75         # LARGER: Fewer chunks
+    CHUNK_STEP = 48         # TRIPLED: Skip most chunks
+    
+    TREND_BATCH_SIZE = 128  # MUCH LARGER: Fastest processing
+    
+    # Pipeline 2: More relaxed for speed
+    RECENT_YEAR_THRESHOLD = 2022
+    MIN_RECUR_YEARS = 2
+    MIN_TEMPORAL_SPAN = 2
+    CORR_THRESHOLD = 0.75    # RELAXED: Still meaningful
+    MIN_CORR_CONSISTENCY = 0.8
+    CLUSTER_EPS = 16         # LARGER: Even fewer clusters
+    CLUSTER_MIN_SAMPLES = 3  # HIGHER: Skip small clusters
+    MIN_CLUSTER_LINEAR_LENGTH = 8
+    MIN_CLUSTER_AREA_SIZE = 4
+    MIN_CLUSTER_SIZE = 1
+    MIN_SPATIAL_DENSITY = 0.01
+    MAX_CLUSTER_BBOX_SIZE = 150  # SMALLER: Skip complex patterns
+    MIN_LINEAR_ASPECT_RATIO = 2.5
+    MIN_SIGNAL_VARIANCE = 0.02
+    MIN_SIGNAL_RANGE = 0.05
+    MAX_NOISE_RATIO = 0.5
+    
+    # Pipeline 3: MAXIMUM SPEED OPTIMIZATIONS
+    PATCH_SIZE = 20         # MUCH LARGER: 75% fewer patches
+    STRIDE = 64             # 4X LARGER: 85% fewer patches total
+    BATCH_SIZE = 128        # HUGE BATCHES: Maximum GPU usage
+    PCA_DIM = 12            # MINIMAL: Fastest feature extraction
+    
+    # Pipeline 4: MAXIMUM SPEED OPTIMIZATIONS
+    MIN_YEARS_REQ = 2
+    N_ESTIMATORS = 25       # MINIMAL: Just enough for ensemble
+    MAX_DEPTH = 4           # SHALLOW: Very fast trees
+    LEARNING_RATE = 0.1     # HIGH: Fastest convergence
+    N_SPLITS = 2            # MINIMAL: Almost no cross-validation
+    TEST_SIZE = 0.4         # LARGE: Minimal training data
+
+

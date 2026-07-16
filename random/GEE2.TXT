@@ -1,0 +1,262 @@
+// FarmEye: NDVI, EVI, NDWI for custom Kerala farm polygon
+
+// 1. Define the custom farm polygon
+//Lon, Lat
+var farmPolygon = ee.Geometry.Polygon([
+  [
+    [76.3028383255005, 10.6448342317837],
+    [76.3047695159912, 10.6217204595812],
+    [76.3357114791870, 10.6231967564744],
+    [76.3261413574219, 10.6470274184609],
+  ]
+]);
+
+// 2. Load Sentinel-2 SR imagery
+var s2 = ee.ImageCollection("COPERNICUS/S2_SR")
+  .filterBounds(farmPolygon)
+  .filterDate('2025-01-01', '2025-01-31')
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
+  .median();
+
+// 3. Cloud mask using SCL
+function maskClouds(image) {
+  var scl = image.select('SCL');
+  var cloudMask = scl.neq(3).and(scl.neq(8)).and(scl.neq(9)).and(scl.neq(10));
+  return image.updateMask(cloudMask);
+}
+s2 = maskClouds(s2);
+
+// Force float32 types for all indices
+var ndvi = s2.normalizedDifference(['B8', 'B4']).rename('NDVI').toFloat();
+var evi = s2.expression(
+  '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))',
+  {
+    'NIR': s2.select('B8'),
+    'RED': s2.select('B4'),
+    'BLUE': s2.select('B2')
+  }).rename('EVI').toFloat();
+var ndwi = s2.normalizedDifference(['B8', 'B11']).rename('NDWI').toFloat();
+
+// Combine into multiband image
+var allIndices = ndvi.addBands(evi).addBands(ndwi);
+
+// Export with 10m resolution, EPSG:3857 projection for better fidelity
+Export.image.toDrive({
+  image: allIndices.clip(farmPolygon),
+  description: '2025',
+  folder: 'FarmEye',
+  region: farmPolygon,
+  scale: 1,
+  crs: 'EPSG:3857',
+  maxPixels: 1e9
+});
+
+
+////////////////////
+
+// 2. Load Sentinel-2 SR imagery
+var s2 = ee.ImageCollection("COPERNICUS/S2_SR")
+  .filterBounds(farmPolygon)
+  .filterDate('2024-01-01', '2024-01-31')
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
+  .median();
+
+// 3. Cloud mask using SCL
+function maskClouds(image) {
+  var scl = image.select('SCL');
+  var cloudMask = scl.neq(3).and(scl.neq(8)).and(scl.neq(9)).and(scl.neq(10));
+  return image.updateMask(cloudMask);
+}
+s2 = maskClouds(s2);
+
+// Force float32 types for all indices
+var ndvi = s2.normalizedDifference(['B8', 'B4']).rename('NDVI').toFloat();
+var evi = s2.expression(
+  '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))',
+  {
+    'NIR': s2.select('B8'),
+    'RED': s2.select('B4'),
+    'BLUE': s2.select('B2')
+  }).rename('EVI').toFloat();
+var ndwi = s2.normalizedDifference(['B8', 'B11']).rename('NDWI').toFloat();
+
+// Combine into multiband image
+var allIndices = ndvi.addBands(evi).addBands(ndwi);
+
+// Export with 10m resolution, EPSG:3857 projection for better fidelity
+Export.image.toDrive({
+  image: allIndices.clip(farmPolygon),
+  description: '2024',
+  folder: 'FarmEye',
+  region: farmPolygon,
+  scale: 1,
+  crs: 'EPSG:3857',
+  maxPixels: 1e9
+});
+
+////////////////////
+
+// 2. Load Sentinel-2 SR imagery
+var s2 = ee.ImageCollection("COPERNICUS/S2_SR")
+  .filterBounds(farmPolygon)
+  .filterDate('2023-01-01', '2023-01-31')
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
+  .median();
+
+// 3. Cloud mask using SCL
+function maskClouds(image) {
+  var scl = image.select('SCL');
+  var cloudMask = scl.neq(3).and(scl.neq(8)).and(scl.neq(9)).and(scl.neq(10));
+  return image.updateMask(cloudMask);
+}
+s2 = maskClouds(s2);
+
+// Force float32 types for all indices
+var ndvi = s2.normalizedDifference(['B8', 'B4']).rename('NDVI').toFloat();
+var evi = s2.expression(
+  '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))',
+  {
+    'NIR': s2.select('B8'),
+    'RED': s2.select('B4'),
+    'BLUE': s2.select('B2')
+  }).rename('EVI').toFloat();
+var ndwi = s2.normalizedDifference(['B8', 'B11']).rename('NDWI').toFloat();
+
+// Combine into multiband image
+var allIndices = ndvi.addBands(evi).addBands(ndwi);
+
+// Export with 10m resolution, EPSG:3857 projection for better fidelity
+Export.image.toDrive({
+  image: allIndices.clip(farmPolygon),
+  description: '2023',
+  folder: 'FarmEye',
+  region: farmPolygon,
+  scale: 1,
+  crs: 'EPSG:3857',
+  maxPixels: 1e9
+});
+
+////////////////////
+
+// 2. Load Sentinel-2 SR imagery
+var s2 = ee.ImageCollection("COPERNICUS/S2_SR")
+  .filterBounds(farmPolygon)
+  .filterDate('2022-01-01', '2022-01-31')
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
+  .median();
+
+// 3. Cloud mask using SCL
+function maskClouds(image) {
+  var scl = image.select('SCL');
+  var cloudMask = scl.neq(3).and(scl.neq(8)).and(scl.neq(9)).and(scl.neq(10));
+  return image.updateMask(cloudMask);
+}
+s2 = maskClouds(s2);
+
+// Force float32 types for all indices
+var ndvi = s2.normalizedDifference(['B8', 'B4']).rename('NDVI').toFloat();
+var evi = s2.expression(
+  '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))',
+  {
+    'NIR': s2.select('B8'),
+    'RED': s2.select('B4'),
+    'BLUE': s2.select('B2')
+  }).rename('EVI').toFloat();
+var ndwi = s2.normalizedDifference(['B8', 'B11']).rename('NDWI').toFloat();
+
+// Combine into multiband image
+var allIndices = ndvi.addBands(evi).addBands(ndwi);
+
+// Export with 10m resolution, EPSG:3857 projection for better fidelity
+Export.image.toDrive({
+  image: allIndices.clip(farmPolygon),
+  description: '2022',
+  folder: 'FarmEye',
+  region: farmPolygon,
+  scale: 1,
+  crs: 'EPSG:3857',
+  maxPixels: 1e9
+});
+
+////////////////////
+
+// 2. Load Sentinel-2 SR imagery
+var s2 = ee.ImageCollection("COPERNICUS/S2_SR")
+  .filterBounds(farmPolygon)
+  .filterDate('2021-01-01', '2021-01-31')
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
+  .median();
+
+// 3. Cloud mask using SCL
+function maskClouds(image) {
+  var scl = image.select('SCL');
+  var cloudMask = scl.neq(3).and(scl.neq(8)).and(scl.neq(9)).and(scl.neq(10));
+  return image.updateMask(cloudMask);
+}
+s2 = maskClouds(s2);
+
+// Force float32 types for all indices
+var ndvi = s2.normalizedDifference(['B8', 'B4']).rename('NDVI').toFloat();
+var evi = s2.expression(
+  '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))',
+  {
+    'NIR': s2.select('B8'),
+    'RED': s2.select('B4'),
+    'BLUE': s2.select('B2')
+  }).rename('EVI').toFloat();
+var ndwi = s2.normalizedDifference(['B8', 'B11']).rename('NDWI').toFloat();
+
+// Combine into multiband image
+var allIndices = ndvi.addBands(evi).addBands(ndwi);
+
+// Export with 10m resolution, EPSG:3857 projection for better fidelity
+Export.image.toDrive({
+  image: allIndices.clip(farmPolygon),
+  description: '2021',
+  folder: 'FarmEye',
+  region: farmPolygon,
+  scale: 1,
+  crs: 'EPSG:3857',
+  maxPixels: 1e9
+});
+////////////////////
+
+// 2. Load Sentinel-2 SR imagery
+var s2 = ee.ImageCollection("COPERNICUS/S2_SR")
+  .filterBounds(farmPolygon)
+  .filterDate('2020-01-01', '2020-01-31')
+  .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10))
+  .median();
+
+// 3. Cloud mask using SCL
+function maskClouds(image) {
+  var scl = image.select('SCL');
+  var cloudMask = scl.neq(3).and(scl.neq(8)).and(scl.neq(9)).and(scl.neq(10));
+  return image.updateMask(cloudMask);
+}
+s2 = maskClouds(s2);
+
+// Force float32 types for all indices
+var ndvi = s2.normalizedDifference(['B8', 'B4']).rename('NDVI').toFloat();
+var evi = s2.expression(
+  '2.5 * ((NIR - RED) / (NIR + 6 * RED - 7.5 * BLUE + 1))',
+  {
+    'NIR': s2.select('B8'),
+    'RED': s2.select('B4'),
+    'BLUE': s2.select('B2')
+  }).rename('EVI').toFloat();
+var ndwi = s2.normalizedDifference(['B8', 'B11']).rename('NDWI').toFloat();
+
+// Combine into multiband image
+var allIndices = ndvi.addBands(evi).addBands(ndwi);
+
+// Export with 10m resolution, EPSG:3857 projection for better fidelity
+Export.image.toDrive({
+  image: allIndices.clip(farmPolygon),
+  description: '2020',
+  folder: 'FarmEye',
+  region: farmPolygon,
+  scale: 1,
+  crs: 'EPSG:3857',
+  maxPixels: 1e9
+});

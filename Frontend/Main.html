@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FarmEye - Satellite Analytics</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- EmailJS SDK -->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(ellipse at top, #0f172a 0%, #020617 100%);
+            color: #f8fafc;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 1.75rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00d4aa 0%, #10b981 50%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-shadow: 0 0 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .logo::before {
+            content: "🛰️";
+            font-size: 1.5rem;
+            filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.5));
+        }
+
+        .header-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            max-width: 500px;
+            margin: 0 2rem;
+        }
+
+        .search-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .search-bar {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            border-radius: 16px;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            color: #f8fafc;
+            font-size: 0.95rem;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
+        }
+
+        .search-bar::placeholder {
+            color: #64748b;
+        }
+
+        .search-bar:focus {
+            border-color: #10b981;
+            background: rgba(30, 41, 59, 0.95);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+            transition: color 0.3s ease;
+        }
+
+        .search-bar:focus + .search-icon {
+            color: #10b981;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-top: none;
+            border-radius: 0 0 16px 16px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1001;
+            display: none;
+        }
+
+        .search-result {
+            padding: 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .search-result:hover {
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        .search-result:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-icon {
+            color: #10b981;
+            font-size: 1rem;
+        }
+
+        .search-result-text {
+            flex: 1;
+        }
+
+        .search-result-name {
+            font-weight: 600;
+            color: #f8fafc;
+            margin-bottom: 0.25rem;
+        }
+
+        .search-result-details {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .status-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .welcome-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(2, 6, 23, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 5000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .welcome-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .welcome-box {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 24px;
+            padding: 3rem;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .welcome-overlay:not(.hidden) .welcome-box {
+            transform: scale(1);
+        }
+
+        .welcome-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00d4aa 0%, #10b981 50%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .welcome-subtitle {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+
+        .welcome-features {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+            text-align: left;
+        }
+
+        .welcome-feature {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: rgba(30, 41, 59, 0.4);
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 1.5rem;
+            color: #10b981;
+        }
+
+        .feature-text {
+            font-size: 0.95rem;
+            color: #e2e8f0;
+        }
+
+        .welcome-btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            color: white;
+            padding: 1rem 2.5rem;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4);
+        }
+
+        .welcome-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.5);
+        }
+
+        .map-container {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(148, 163, 184, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            border-radius: 20px;
+        }
+
+        .controls-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            min-width: 280px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #f1f5f9;
+            text-align: center;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-btn {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: #f8fafc;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .control-btn:hover {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: #10b981;
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.2);
+        }
+
+        .control-btn:hover::before {
+            left: 100%;
+        }
+
+        .control-btn:active {
+            transform: translateY(0);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .control-btn.active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-color: #10b981;
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4);
+        }
+
+        .control-btn.danger {
+            background: rgba(185, 28, 28, 0.1);
+            border-color: rgba(185, 28, 28, 0.3);
+        }
+
+        .control-btn.danger:hover {
+            background: rgba(185, 28, 28, 0.2);
+            border-color: #dc2626;
+        }
+
+        .control-btn.finish {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border-color: #3b82f6;
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.4);
+        }
+
+        .control-btn.finish:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.6);
+        }
+
+        .area-info {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s ease;
+        }
+
+        .area-info.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .area-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #10b981;
+            margin-bottom: 0.25rem;
+        }
+
+        .area-label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .drawing-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(16, 185, 129, 0.95);
+            backdrop-filter: blur(20px);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 16px;
+            font-weight: 500;
+            font-size: 1.1rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1500;
+            box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.3);
+        }
+
+        .drawing-indicator.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.02);
+        }
+
+        .notification {
+            position: fixed;
+            top: 100px;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            backdrop-filter: blur(30px);
+            z-index: 3000;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            max-width: 350px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.3);
+            color: #10b981;
+        }
+
+        .notification.error {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .notification.info {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
+            color: #3b82f6;
+        }
+
+        /* Leaflet popup customization */
+        .leaflet-popup-content-wrapper {
+            background: rgba(15, 23, 42, 0.95) !important;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px !important;
+            color: #f8fafc !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .leaflet-popup-tip {
+            background: rgba(15, 23, 42, 0.95) !important;
+            border: 1px solid rgba(148, 163, 184, 0.2) !important;
+        }
+
+        /* Analysis Modal Styles */
+        .analysis-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(2, 6, 23, 0.95);
+            backdrop-filter: blur(20px);
+            z-index: 5000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .analysis-overlay.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .analysis-modal {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 24px;
+            padding: 2.5rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9) translateY(20px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .analysis-overlay.show .analysis-modal {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .modal-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d4aa 0%, #10b981 50%, #059669 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-subtitle {
+            color: #94a3b8;
+            font-size: 0.95rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: #f1f5f9;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .toggle-option {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toggle-option:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        .toggle-option.active {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: #10b981;
+        }
+
+        .toggle-text {
+            flex: 1;
+        }
+
+        .toggle-title {
+            font-weight: 600;
+            color: #f8fafc;
+            margin-bottom: 0.25rem;
+        }
+
+        .toggle-description {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .toggle-switch {
+            width: 48px;
+            height: 24px;
+            background: rgba(55, 65, 81, 0.6);
+            border-radius: 12px;
+            position: relative;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .toggle-switch.active {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-color: #10b981;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .resolution-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .resolution-option {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .resolution-option:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        .resolution-option.active {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .resolution-title {
+            font-weight: 600;
+            color: #f8fafc;
+            margin-bottom: 0.5rem;
+        }
+
+        .resolution-time {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+
+        .resolution-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .contact-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-input {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 0.875rem 1rem;
+            color: #f8fafc;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-input::placeholder {
+            color: #64748b;
+        }
+
+        .form-input:focus {
+            border-color: #10b981;
+            background: rgba(30, 41, 59, 0.8);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            border: none;
+        }
+
+        .modal-btn.secondary {
+            background: rgba(55, 65, 81, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            color: #f8fafc;
+        }
+
+        .modal-btn.secondary:hover {
+            background: rgba(55, 65, 81, 0.8);
+            border-color: rgba(148, 163, 184, 0.3);
+        }
+
+        .modal-btn.primary {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: 1px solid #10b981;
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.4);
+        }
+
+        .modal-btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 15px 20px -3px rgba(16, 185, 129, 0.5);
+        }
+
+        .time-estimate {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .time-estimate-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #3b82f6;
+            margin-bottom: 0.25rem;
+        }
+
+        .time-estimate-label {
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        /* Email Status Styles */
+        .email-status {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            color: #10b981;
+            font-weight: 500;
+            z-index: 4000;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .email-status.show {
+            opacity: 1;
+        }
+
+        .email-status.error {
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+                height: auto;
+            }
+            
+            .header-center {
+                margin: 0;
+                max-width: 100%;
+            }
+            
+            .logo {
+                font-size: 1.5rem;
+            }
+            
+            .welcome-features {
+                grid-template-columns: 1fr;
+            }
+            
+            .welcome-box {
+                padding: 2rem;
+                margin: 1rem;
+            }
+            
+            .welcome-title {
+                font-size: 2rem;
+            }
+            
+            .map-container {
+                top: 120px;
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                border-radius: 16px;
+            }
+            
+            .controls-panel {
+                position: fixed;
+                bottom: 20px;
+                left: 10px;
+                right: 10px;
+                top: auto;
+                min-width: unset;
+                padding: 1rem;
+                border-radius: 16px 16px 0 0;
+            }
+            
+            .control-btn {
+                padding: 0.8rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .email-status {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                transform: none;
+                max-width: none;
+            }
+        }
+
+        /* Smooth animations */
+        * {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Custom scrollbar for webkit browsers */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(16, 185, 129, 0.6);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(16, 185, 129, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <!-- Welcome Overlay -->
+    <div class="welcome-overlay" id="welcomeOverlay">
+        <div class="welcome-box">
+            <h1 class="welcome-title">Welcome to FarmEye</h1>
+            <p class="welcome-subtitle">Advanced Satellite Analytics for Precision Agriculture</p>
+            
+            <div class="welcome-features">
+                <div class="welcome-feature">
+                    <i class="fas fa-draw-polygon feature-icon"></i>
+                    <span class="feature-text">Draw custom areas on satellite imagery</span>
+                </div>
+                <div class="welcome-feature">
+                    <i class="fas fa-search feature-icon"></i>
+                    <span class="feature-text">Search and navigate to any location</span>
+                </div>
+                <div class="welcome-feature">
+                    <i class="fas fa-chart-line feature-icon"></i>
+                    <span class="feature-text">Get detailed agricultural analytics</span>
+                </div>
+                <div class="welcome-feature">
+                    <i class="fas fa-satellite feature-icon"></i>
+                    <span class="feature-text">Real-time satellite data processing</span>
+                </div>
+            </div>
+            
+            <button class="welcome-btn" onclick="closeWelcome()">
+                <i class="fas fa-rocket" style="margin-right: 0.5rem;"></i>
+                Start Exploring
+            </button>
+        </div>
+    </div>
+
+    <!-- Analysis Configuration Modal -->
+    <div class="analysis-overlay" id="analysisOverlay">
+        <div class="analysis-modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Analysis Configuration</h2>
+                <p class="modal-subtitle">Customize your satellite analysis parameters</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Advanced Features</label>
+                <div class="toggle-option" id="heatmapToggle">
+                    <div class="toggle-text">
+                        <div class="toggle-title">Gradient Heatmap Over Years</div>
+                        <div class="toggle-description">Track changes over multiple years with temporal analysis</div>
+                    </div>
+                    <div class="toggle-switch" id="heatmapSwitch"></div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Processing Resolution</label>
+                <div class="resolution-options">
+                    <div class="resolution-option active" data-resolution="medium">
+                        <span class="resolution-icon">⚡</span>
+                        <div class="resolution-title">Medium</div>
+                        <div class="resolution-time">~15-30 minutes</div>
+                        <div class="resolution-description">Balanced quality & speed</div>
+                    </div>
+                    <div class="resolution-option" data-resolution="high">
+                        <span class="resolution-icon">🎯</span>
+                        <div class="resolution-title">High</div>
+                        <div class="resolution-time">~45-90 minutes</div>
+                        <div class="resolution-description">Maximum detail & accuracy</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Notification Contact</label>
+                <div class="contact-inputs">
+                    <input type="email" 
+                           class="form-input" 
+                           id="contactEmail"
+                           placeholder="your@email.com"
+                           autocomplete="email">
+                    <input type="tel" 
+                           class="form-input" 
+                           id="contactPhone"
+                           placeholder="+1 (555) 123-4567"
+                           autocomplete="tel">
+                </div>
+            </div>
+
+            <div class="time-estimate" id="timeEstimate">
+                <div class="time-estimate-value" id="estimatedTime">~15-30 minutes</div>
+                <div class="time-estimate-label">Estimated processing time</div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="modal-btn secondary" onclick="closeAnalysisModal()">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button class="modal-btn primary" onclick="submitAnalysis()">
+                    <i class="fas fa-rocket"></i> Start Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <header class="header">
+        <div class="logo">FarmEye</div>
+        
+        <div class="header-center">
+            <div class="search-container">
+                <input type="text" 
+                       class="search-bar" 
+                       id="searchBar"
+                       placeholder="Search any location worldwide..."
+                       autocomplete="off">
+                <i class="fas fa-search search-icon"></i>
+                <div class="search-results" id="searchResults"></div>
+            </div>
+        </div>
+        
+        <div class="status-info">
+            <div class="status-dot"></div>
+            <span>Satellite Ready</span>
+        </div>
+    </header>
+
+    <div class="map-container">
+        <div id="map"></div>
+        
+        <div class="drawing-indicator" id="drawingIndicator">
+            🎯 Click on the map to start drawing your area
+        </div>
+        
+        <div class="controls-panel">
+            <h3 class="panel-title">Area Analysis</h3>
+            
+            <div class="control-group">
+                <button class="control-btn" id="drawBtn">
+                    <i class="fas fa-pencil-alt"></i> Draw Area
+                </button>
+                
+                <button class="control-btn finish" id="finishBtn" style="display: none;">
+                    <i class="fas fa-check-circle"></i> Finish Drawing
+                </button>
+                
+                <button class="control-btn danger" id="clearBtn">
+                    <i class="fas fa-trash"></i> Clear Map
+                </button>
+                
+                <button class="control-btn" id="analyzeBtn" disabled>
+                    <i class="fas fa-rocket"></i> Start Analysis
+                </button>
+            </div>
+            
+            <div class="area-info" id="areaInfo">
+                <div class="area-value" id="areaValue">0</div>
+                <div class="area-label">Hectares Selected</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize EmailJS - REPLACE THESE WITH YOUR ACTUAL EMAILJS CREDENTIALS
+        (function() {
+            emailjs.init({
+                publicKey: "MsPoyEt8Tqh7Tws2G", // Replace with your EmailJS public key
+                blockHeadless: true,
+                blockList: {
+                    list: [],
+                    watchVariable: 'userEmail',
+                },
+                limitRate: {
+                    id: 'app',
+                    throttle: 10000,
+                },
+            });
+        })();
+
+        // App state - Enhanced with email integration
+        const app = {
+            map: null,
+            isDrawing: false,
+            currentPolygon: null,
+            polygonPoints: [],
+            drawnLayer: null,
+            searchTimeout: null,
+            analysisConfig: {
+                gradientHeatmap: false,
+                resolution: 'medium',
+                contactEmail: '',
+                contactPhone: '',
+                polygonCoordinates: [],
+                area: 0,
+                timestamp: null
+            },
+            searchCache: new Map(),
+            isSearching: false,
+            emailConfig: {
+                serviceId: "service_t2hjzid", // Replace with your EmailJS service ID
+                templateId: "template_ykbb2pm", // Replace with your EmailJS template ID
+                targetEmail: 'chinmaykamjith@gmail.com'
+            }
+        };
+
+        // EMAIL FUNCTIONS - CORE FUNCTIONALITY FOR SENDING DATA
+        async function sendAnalysisEmail() {
+            try {
+                showEmailStatus('📧 Sending analysis data to Server...', false);
+
+                const emailData = {
+                    to_email: app.emailConfig.targetEmail,
+                    from_name: 'FarmEye Analytics Platform',
+                    subject: `🛰️ FarmEye Analysis Request - ${new Date().toLocaleString()}`,
+                    message: formatEmailMessage(),
+                    coordinates_json: JSON.stringify(app.analysisConfig.polygonCoordinates, null, 2),
+                    analysis_config: formatAnalysisOptions(),
+                    timestamp: app.analysisConfig.timestamp,
+                    area_size: app.analysisConfig.area.toFixed(2),
+                    user_email: app.analysisConfig.contactEmail || 'Not provided',
+                    user_phone: app.analysisConfig.contactPhone || 'Not provided',
+                    coordinate_count: app.analysisConfig.polygonCoordinates.length.toString(),
+                    resolution: app.analysisConfig.resolution,
+                    heatmap_enabled: app.analysisConfig.gradientHeatmap ? 'Yes' : 'No'
+                };
+
+                console.log('📧 Sending email with data:', emailData);
+
+                const response = await emailjs.send(
+                    app.emailConfig.serviceId,
+                    app.emailConfig.templateId,
+                    emailData
+                );
+
+                console.log('✅ Email sent successfully:', response);
+                showEmailStatus('✅ Analysis data sent successfully to Server!', false);
+                return true;
+
+            } catch (error) {
+                console.error('❌ Failed to send email:', error);
+                showEmailStatus('❌ Email failed - check EmailJS configuration', true);
+                
+                // Fallback: log the complete data for manual retrieval
+                console.log('🔧 FALLBACK - Complete analysis data:', {
+                    targetEmail: app.emailConfig.targetEmail,
+                    coordinates: app.analysisConfig.polygonCoordinates,
+                    analysisConfig: app.analysisConfig,
+                    timestamp: new Date().toISOString(),
+                    formattedMessage: formatEmailMessage()
+                });
+                
+                // Show fallback notification with console reference
+                showNotification('⚠️ Email delivery failed. Complete data logged to console for manual retrieval.', 'error');
+                return false;
+            }
+        }
+
+        function formatEmailMessage() {
+            const coords = app.analysisConfig.polygonCoordinates;
+            const config = app.analysisConfig;
+            
+            return `
+🛰️ FARMEYE SATELLITE ANALYSIS REQUEST
+
+═══════════════════════════════════════════════════
+SELECTED AREA DETAILS:
+═══════════════════════════════════════════════════
+• Area Size: ${config.area.toFixed(2)} hectares
+• Boundary Points: ${coords.length} GPS coordinates
+• Analysis Resolution: ${config.resolution.charAt(0).toUpperCase() + config.resolution.slice(1)}
+• Gradient Heatmap: ${config.gradientHeatmap ? 'YES - Multi-year temporal analysis' : 'NO - Standard analysis only'}
+• Request Timestamp: ${new Date(config.timestamp).toLocaleString()}
+
+═══════════════════════════════════════════════════
+USER CONTACT INFORMATION:
+═══════════════════════════════════════════════════
+• Email: ${config.contactEmail || 'Not provided'}
+• Phone: ${config.contactPhone || 'Not provided'}
+
+═══════════════════════════════════════════════════
+POLYGON COORDINATES (GPS):
+═══════════════════════════════════════════════════
+${coords.map((coord, index) => `Point ${index + 1}: Lat ${coord[0].toFixed(6)}, Lng ${coord[1].toFixed(6)}`).join('\n')}
+
+═══════════════════════════════════════════════════
+Google Earth Engine (GPS):
+═══════════════════════════════════════════════════
+${coords.map((coord, index) => `[${coord[1].toFixed(13)}, ${coord[0].toFixed(13)}],`).join('\n')}
+
+═══════════════════════════════════════════════════
+ANALYSIS CONFIGURATION:
+═══════════════════════════════════════════════════
+• Processing Resolution: ${config.resolution}
+• Temporal Analysis: ${config.gradientHeatmap ? 'ENABLED (Multi-year gradient heatmap analysis)' : 'DISABLED (Standard single-period analysis)'}
+• Estimated Processing Time: ${getProcessingTimeEstimate()}
+• Processing Priority: ${config.resolution === 'high' ? 'HIGH ACCURACY' : 'BALANCED SPEED/QUALITY'}
+
+═══════════════════════════════════════════════════
+TECHNICAL DATA:
+═══════════════════════════════════════════════════
+• Coordinate System: WGS84 (EPSG:4326)
+• Area Calculation Method: Shoelace formula
+• Polygon Vertices: ${coords.length}
+• Data Format: GeoJSON compatible
+• Platform: FarmEye Web Analytics
+
+This analysis request was automatically generated by the FarmEye satellite analytics platform.
+For questions or support, please contact the FarmEye development team.
+
+Generated at: ${new Date().toISOString()}
+            `.trim();
+        }
+
+        function formatAnalysisOptions() {
+            return JSON.stringify({
+                polygonCoordinates: app.analysisConfig.polygonCoordinates,
+                gradientHeatmap: app.analysisConfig.gradientHeatmap,
+                resolution: app.analysisConfig.resolution,
+                area: app.analysisConfig.area,
+                coordinateCount: app.analysisConfig.polygonCoordinates.length,
+                contactEmail: app.analysisConfig.contactEmail,
+                contactPhone: app.analysisConfig.contactPhone,
+                timestamp: app.analysisConfig.timestamp,
+                processingTime: getProcessingTimeEstimate()
+            }, null, 2);
+        }
+
+        function getProcessingTimeEstimate() {
+            let baseTime = app.analysisConfig.resolution === 'high' ? [45, 90] : [15, 30];
+            if (app.analysisConfig.gradientHeatmap) {
+                baseTime = baseTime.map(time => Math.ceil(time * 1.5));
+            }
+            return `~${baseTime[0]}-${baseTime[1]} minutes`;
+        }
+
+        function showEmailStatus(message, isError) {
+            // Remove existing status
+            const existing = document.querySelector('.email-status');
+            if (existing) existing.remove();
+
+            const status = document.createElement('div');
+            status.className = `email-status ${isError ? 'error' : ''}`;
+            status.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    ${isError ? 
+                        '<i class="fas fa-exclamation-triangle"></i>' : 
+                        '<i class="fas fa-paper-plane"></i>'
+                    }
+                    <span>${message}</span>
+                </div>
+            `;
+
+            document.body.appendChild(status);
+            
+            // Show with animation
+            setTimeout(() => status.classList.add('show'), 100);
+            
+            // Auto-hide after delay
+            setTimeout(() => {
+                status.classList.remove('show');
+                setTimeout(() => status.remove(), 400);
+            }, isError ? 6000 : 4000);
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMap();
+            initializeControls();
+            initializeSearch();
+            
+            // Show welcome message about email functionality
+            setTimeout(() => {
+                showNotification('📧 FarmEye will automatically send analysis data to Server when you start an analysis', 'info');
+            }, 2000);
+            
+            // Auto-hide welcome after 10 seconds if user doesn't interact
+            setTimeout(() => {
+                const overlay = document.getElementById('welcomeOverlay');
+                if (!overlay.classList.contains('hidden')) {
+                    closeWelcome();
+                }
+            }, 10000);
+        });
+
+        function closeWelcome() {
+            const overlay = document.getElementById('welcomeOverlay');
+            overlay.classList.add('hidden');
+            showNotification('Welcome to FarmEye! Start by drawing an area or searching for a location.', 'success');
+        }
+
+        function initializeMap() {
+            try {
+                // Initialize map
+                app.map = L.map('map', {
+                    center: [10.8505, 76.2711], // Kerala, India
+                    zoom: 8,
+                    zoomControl: true,
+                    scrollWheelZoom: true,
+                    doubleClickZoom: false // Disable double-click zoom for drawing
+                });
+
+                // Add satellite tiles with fallback
+                const satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                    attribution: '&copy; Google Satellite',
+                    maxZoom: 20
+                });
+
+                const fallbackLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '&copy; Esri',
+                    maxZoom: 19
+                });
+
+                satelliteLayer.addTo(app.map);
+                
+                // Fallback on error
+                satelliteLayer.on('tileerror', () => {
+                    console.log('Google tiles failed, switching to Esri...');
+                    app.map.removeLayer(satelliteLayer);
+                    fallbackLayer.addTo(app.map);
+                });
+
+                console.log('Map initialized successfully');
+
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                showNotification('Error loading map. Please refresh.', 'error');
+            }
+        }
+
+        function initializeControls() {
+            const drawBtn = document.getElementById('drawBtn');
+            const finishBtn = document.getElementById('finishBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+
+            drawBtn.addEventListener('click', toggleDrawing);
+            finishBtn.addEventListener('click', finishPolygon);
+            clearBtn.addEventListener('click', clearMap);
+            analyzeBtn.addEventListener('click', startAnalysis);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && app.isDrawing) {
+                    stopDrawing();
+                }
+                if (e.key === 'Enter' && app.isDrawing && app.polygonPoints.length >= 3) {
+                    finishPolygon();
+                }
+            });
+        }
+
+        function initializeSearch() {
+            const searchBar = document.getElementById('searchBar');
+            const searchResults = document.getElementById('searchResults');
+            
+            searchBar.addEventListener('input', function(e) {
+                const query = e.target.value.trim();
+                
+                // Clear existing timeout
+                if (app.searchTimeout) {
+                    clearTimeout(app.searchTimeout);
+                }
+                
+                // Hide results if query is empty
+                if (query.length === 0) {
+                    hideSearchResults();
+                    return;
+                }
+                
+                // Debounce search
+                app.searchTimeout = setTimeout(() => {
+                    if (query.length > 2) {
+                        performSearch(query);
+                    }
+                }, 500);
+            });
+
+            searchBar.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const query = e.target.value.trim();
+                    if (query) {
+                        performSearch(query);
+                    }
+                }
+            });
+
+            // Hide search results when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.search-container')) {
+                    hideSearchResults();
+                }
+            });
+
+            // Show results when focusing on search bar
+            searchBar.addEventListener('focus', function() {
+                if (this.value.trim().length > 2) {
+                    performSearch(this.value.trim());
+                }
+            });
+        }
+
+        async function performSearch(query) {
+            // Prevent multiple simultaneous searches
+            if (app.isSearching) return;
+            
+            // Check cache first
+            if (app.searchCache.has(query.toLowerCase())) {
+                displaySearchResults(app.searchCache.get(query.toLowerCase()));
+                return;
+            }
+
+            // Simple coordinate search (lat,lng or lng,lat)
+            const coordMatch = query.match(/^(-?\d+\.?\d*),\s*(-?\d+\.?\d*)$/);
+            if (coordMatch) {
+                const lat = parseFloat(coordMatch[1]);
+                const lng = parseFloat(coordMatch[2]);
+                
+                if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+                    app.map.setView([lat, lng], 15);
+                    showNotification(`Navigated to coordinates: ${lat}, ${lng}`, 'success');
+                    hideSearchResults();
+                    return;
+                }
+            }
+
+            app.isSearching = true;
+            
+            try {
+                // Use Nominatim OpenStreetMap geocoding service
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+                );
+                
+                if (!response.ok) {
+                    throw new Error('Search service unavailable');
+                }
+                
+                const results = await response.json();
+                
+                // Process and format results
+                const formattedResults = results.map(result => ({
+                    name: result.display_name.split(',')[0],
+                    fullName: result.display_name,
+                    lat: parseFloat(result.lat),
+                    lng: parseFloat(result.lon),
+                    type: result.type || 'location',
+                    importance: result.importance || 0
+                }));
+
+                // Cache the results
+                app.searchCache.set(query.toLowerCase(), formattedResults);
+                
+                displaySearchResults(formattedResults);
+                
+            } catch (error) {
+                console.error('Search error:', error);
+                showNotification('Search temporarily unavailable. Try coordinates instead.', 'error');
+                hideSearchResults();
+            } finally {
+                app.isSearching = false;
+            }
+        }
+
+        function displaySearchResults(results) {
+            const searchResults = document.getElementById('searchResults');
+            
+            if (results.length === 0) {
+                searchResults.innerHTML = `
+                    <div class="search-result">
+                        <i class="fas fa-info-circle search-result-icon"></i>
+                        <div class="search-result-text">
+                            <div class="search-result-name">No results found</div>
+                            <div class="search-result-details">Try a different search term or coordinates</div>
+                        </div>
+                    </div>
+                `;
+                searchResults.style.display = 'block';
+                return;
+            }
+
+            searchResults.innerHTML = results.map(result => `
+                <div class="search-result" onclick="selectLocation(${result.lat}, ${result.lng}, '${result.name.replace(/'/g, "\\'")}')">
+                    <i class="fas fa-map-marker-alt search-result-icon"></i>
+                    <div class="search-result-text">
+                        <div class="search-result-name">${result.name}</div>
+                        <div class="search-result-details">${result.fullName.length > 60 ? result.fullName.substring(0, 60) + '...' : result.fullName}</div>
+                    </div>
+                </div>
+            `).join('');
+            
+            searchResults.style.display = 'block';
+        }
+
+        function selectLocation(lat, lng, name) {
+            app.map.setView([lat, lng], 12);
+            showNotification(`📍 Navigated to ${name}`, 'success');
+            hideSearchResults();
+            
+            // Clear search bar
+            document.getElementById('searchBar').value = '';
+        }
+
+        function hideSearchResults() {
+            const searchResults = document.getElementById('searchResults');
+            searchResults.style.display = 'none';
+        }
+
+        function toggleDrawing() {
+            if (app.isDrawing) {
+                stopDrawing();
+            } else {
+                startDrawing();
+            }
+        }
+
+        function startDrawing() {
+            if (!app.map) {
+                showNotification('Map not ready. Please wait.', 'error');
+                return;
+            }
+
+            app.isDrawing = true;
+            app.polygonPoints = [];
+            
+            // Update UI
+            const drawBtn = document.getElementById('drawBtn');
+            const finishBtn = document.getElementById('finishBtn');
+            
+            drawBtn.classList.add('active');
+            drawBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Drawing';
+            finishBtn.style.display = 'block';
+            
+            // Show drawing indicator
+            const indicator = document.getElementById('drawingIndicator');
+            indicator.classList.add('active');
+            
+            // Clear any existing polygon
+            if (app.drawnLayer) {
+                app.map.removeLayer(app.drawnLayer);
+                app.drawnLayer = null;
+            }
+
+            // Add click handler for drawing
+            app.map.on('click', onMapClick);
+            
+            // Change cursor
+            app.map.getContainer().style.cursor = 'crosshair';
+            
+            showNotification('Click on the map to start drawing your area', 'info');
+        }
+
+        function stopDrawing() {
+            app.isDrawing = false;
+            
+            // Update UI
+            const drawBtn = document.getElementById('drawBtn');
+            const finishBtn = document.getElementById('finishBtn');
+            
+            drawBtn.classList.remove('active');
+            drawBtn.innerHTML = '<i class="fas fa-pencil-alt"></i> Draw Area';
+            finishBtn.style.display = 'none';
+            
+            // Hide drawing indicator
+            const indicator = document.getElementById('drawingIndicator');
+            indicator.classList.remove('active');
+            
+            // Remove click handler
+            app.map.off('click', onMapClick);
+            
+            // Reset cursor
+            app.map.getContainer().style.cursor = '';
+            
+            // Clear incomplete polygon
+            if (app.currentPolygon) {
+                app.map.removeLayer(app.currentPolygon);
+                app.currentPolygon = null;
+            }
+            
+            app.polygonPoints = [];
+            
+            showNotification('Drawing cancelled', 'info');
+        }
+
+        function onMapClick(e) {
+            if (!app.isDrawing) return;
+            
+            const point = [e.latlng.lat, e.latlng.lng];
+            app.polygonPoints.push(point);
+            
+            console.log('Point added:', point);
+            
+            if (app.polygonPoints.length === 1) {
+                // First point - start polygon
+                showNotification('Keep clicking to add more points. Click "Finish Drawing" when done.', 'info');
+                
+                // Create a temporary marker for the first point
+                const marker = L.circleMarker(e.latlng, {
+                    radius: 8,
+                    fillColor: '#10b981',
+                    color: '#ffffff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 1
+                }).addTo(app.map);
+                
+                app.currentPolygon = L.layerGroup([marker]);
+                
+            } else if (app.polygonPoints.length >= 2) {
+                updatePolygonPreview();
+                
+                // Update indicator text
+                const indicator = document.getElementById('drawingIndicator');
+                indicator.innerHTML = `📍 ${app.polygonPoints.length} points added. Click "Finish Drawing" to complete.`;
+            }
+        }
+
+        function updatePolygonPreview() {
+            if (app.currentPolygon) {
+                app.map.removeLayer(app.currentPolygon);
+            }
+            
+            if (app.polygonPoints.length >= 2) {
+                const polyline = L.polyline(app.polygonPoints, {
+                    color: '#10b981',
+                    weight: 3,
+                    opacity: 0.8,
+                    dashArray: '10, 5'
+                });
+                
+                const markers = app.polygonPoints.map(point => 
+                    L.circleMarker(point, {
+                        radius: 8,
+                        fillColor: '#10b981',
+                        color: '#ffffff',
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 1
+                    })
+                );
+                
+                app.currentPolygon = L.layerGroup([polyline, ...markers]);
+                app.currentPolygon.addTo(app.map);
+            }
+        }
+
+        function finishPolygon() {
+            if (app.polygonPoints.length < 3) {
+                showNotification('Need at least 3 points to create an area', 'error');
+                return;
+            }
+            
+            // Create final polygon
+            if (app.currentPolygon) {
+                app.map.removeLayer(app.currentPolygon);
+            }
+            
+            app.drawnLayer = L.polygon(app.polygonPoints, {
+                color: '#10b981',
+                weight: 3,
+                opacity: 0.9,
+                fillColor: '#10b981',
+                fillOpacity: 0.2
+            }).addTo(app.map);
+            
+            // Calculate area and save to config
+            const area = calculateArea(app.polygonPoints);
+            app.analysisConfig.area = area;
+            app.analysisConfig.polygonCoordinates = [...app.polygonPoints]; // Save coordinates immediately
+            
+            // Add popup with area info
+            app.drawnLayer.bindPopup(`
+                <div style="text-align: center; padding: 0.5rem;">
+                    <strong style="color: #10b981; font-size: 1.1rem;">📍 Selected Area</strong><br><br>
+                    <div style="font-size: 1.2rem; font-weight: bold; color: #10b981; margin: 0.5rem 0;">
+                        ${area.toFixed(2)} hectares
+                    </div>
+                    <div style="color: #94a3b8; font-size: 0.9rem;">
+                        ${app.polygonPoints.length} boundary points<br>
+                        📧 Ready to send to Server
+                    </div>
+                </div>
+            `);
+            
+            // Update area info display
+            updateAreaInfo(area);
+            
+            // Stop drawing mode
+            stopDrawing();
+            
+            // Enable analyze button
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.disabled = false;
+            analyzeBtn.classList.remove('disabled');
+            
+            // Fit map to polygon bounds
+            app.map.fitBounds(app.drawnLayer.getBounds(), { padding: [20, 20] });
+            
+            showNotification(`✅ Area created successfully: ${area.toFixed(2)} hectares`, 'success');
+            
+            console.log('Polygon coordinates saved:', app.analysisConfig.polygonCoordinates);
+        }
+
+        function clearMap() {
+            // Stop drawing if active
+            if (app.isDrawing) {
+                stopDrawing();
+            }
+            
+            // Remove drawn layer
+            if (app.drawnLayer) {
+                app.map.removeLayer(app.drawnLayer);
+                app.drawnLayer = null;
+            }
+            
+            // Remove current polygon
+            if (app.currentPolygon) {
+                app.map.removeLayer(app.currentPolygon);
+                app.currentPolygon = null;
+            }
+            
+            // Reset state and clear saved coordinates
+            app.polygonPoints = [];
+            app.analysisConfig.polygonCoordinates = [];
+            app.analysisConfig.area = 0;
+            
+            // Update UI
+            updateAreaInfo(0);
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.disabled = true;
+            analyzeBtn.classList.add('disabled');
+            
+            showNotification('🗑️ Map cleared', 'info');
+        }
+
+        function calculateArea(points) {
+            if (points.length < 3) return 0;
+            
+            // Simple area calculation (Shoelace formula)
+            let area = 0;
+            for (let i = 0; i < points.length; i++) {
+                const j = (i + 1) % points.length;
+                area += points[i][0] * points[j][1];
+                area -= points[j][0] * points[i][1];
+            }
+            
+            // Convert to approximate hectares
+            area = Math.abs(area) / 2;
+            return area * 12100; // Rough conversion factor for display
+        }
+
+        function updateAreaInfo(area) {
+            const areaInfo = document.getElementById('areaInfo');
+            const areaValue = document.getElementById('areaValue');
+            
+            areaValue.textContent = area.toFixed(1);
+            
+            if (area > 0) {
+                areaInfo.classList.add('visible');
+            } else {
+                areaInfo.classList.remove('visible');
+            }
+        }
+
+        function startAnalysis() {
+            // Check if we have a drawn area with coordinates saved
+            if (!app.drawnLayer || !app.analysisConfig.polygonCoordinates || app.analysisConfig.polygonCoordinates.length === 0) {
+                showNotification('Please draw an area first', 'error');
+                console.log('Analysis failed - no coordinates:', {
+                    drawnLayer: !!app.drawnLayer,
+                    coordinates: app.analysisConfig.polygonCoordinates
+                });
+                return;
+            }
+            
+            console.log('Starting analysis with coordinates:', app.analysisConfig.polygonCoordinates);
+            
+            // Show analysis configuration modal
+            showAnalysisModal();
+        }
+
+        function showAnalysisModal() {
+            const overlay = document.getElementById('analysisOverlay');
+            overlay.classList.add('show');
+            
+            // Initialize form with saved values
+            document.getElementById('contactEmail').value = app.analysisConfig.contactEmail;
+            document.getElementById('contactPhone').value = app.analysisConfig.contactPhone;
+            
+            // Set up event listeners for the modal
+            setupAnalysisModalListeners();
+            
+            // Update time estimate
+            updateTimeEstimate();
+        }
+
+        function closeAnalysisModal() {
+            const overlay = document.getElementById('analysisOverlay');
+            overlay.classList.remove('show');
+        }
+
+        function setupAnalysisModalListeners() {
+            // Heatmap toggle
+            const heatmapToggle = document.getElementById('heatmapToggle');
+            const heatmapSwitch = document.getElementById('heatmapSwitch');
+            
+            heatmapToggle.onclick = function() {
+                app.analysisConfig.gradientHeatmap = !app.analysisConfig.gradientHeatmap;
+                
+                if (app.analysisConfig.gradientHeatmap) {
+                    heatmapToggle.classList.add('active');
+                    heatmapSwitch.classList.add('active');
+                } else {
+                    heatmapToggle.classList.remove('active');
+                    heatmapSwitch.classList.remove('active');
+                }
+                
+                updateTimeEstimate();
+                console.log('Heatmap setting changed:', app.analysisConfig.gradientHeatmap);
+            };
+
+            // Set initial state
+            if (app.analysisConfig.gradientHeatmap) {
+                heatmapToggle.classList.add('active');
+                heatmapSwitch.classList.add('active');
+            }
+
+            // Resolution options
+            const resolutionOptions = document.querySelectorAll('.resolution-option');
+            resolutionOptions.forEach(option => {
+                option.onclick = function() {
+                    // Remove active class from all
+                    resolutionOptions.forEach(opt => opt.classList.remove('active'));
+                    
+                    // Add active class to clicked option
+                    this.classList.add('active');
+                    
+                    // Update config
+                    app.analysisConfig.resolution = this.dataset.resolution;
+                    
+                    updateTimeEstimate();
+                    console.log('Resolution changed:', app.analysisConfig.resolution);
+                };
+            });
+
+            // Contact inputs with real-time saving
+            document.getElementById('contactEmail').oninput = function() {
+                app.analysisConfig.contactEmail = this.value.trim();
+                console.log('Email updated:', app.analysisConfig.contactEmail);
+            };
+
+            document.getElementById('contactPhone').oninput = function() {
+                app.analysisConfig.contactPhone = this.value.trim();
+                console.log('Phone updated:', app.analysisConfig.contactPhone);
+            };
+        }
+
+        function updateTimeEstimate() {
+            let baseTime = app.analysisConfig.resolution === 'high' ? [45, 90] : [15, 30];
+            
+            if (app.analysisConfig.gradientHeatmap) {
+                baseTime = baseTime.map(time => Math.ceil(time * 1.5));
+            }
+            
+            const estimateText = `~${baseTime[0]}-${baseTime[1]} minutes`;
+            document.getElementById('estimatedTime').textContent = estimateText;
+        }
+
+        async function submitAnalysis() {
+            // Validate contact information
+            const email = app.analysisConfig.contactEmail.trim();
+            const phone = app.analysisConfig.contactPhone.trim();
+            
+            if (!email && !phone) {
+                showNotification('Please provide at least an email or phone number for notifications', 'error');
+                return;
+            }
+
+            // Basic email validation
+            if (email && !isValidEmail(email)) {
+                showNotification('Please enter a valid email address', 'error');
+                return;
+            }
+
+            // Final validation - ensure we have coordinates
+            if (!app.analysisConfig.polygonCoordinates || app.analysisConfig.polygonCoordinates.length === 0) {
+                showNotification('Error: No area coordinates found. Please redraw the area.', 'error');
+                return;
+            }
+
+            // Set timestamp
+            app.analysisConfig.timestamp = new Date().toISOString();
+
+            // Close modal
+            closeAnalysisModal();
+
+            // Log the complete analysis configuration
+            console.log('🚀 Final Analysis Configuration:', {
+                polygonCoordinates: app.analysisConfig.polygonCoordinates,
+                gradientHeatmap: app.analysisConfig.gradientHeatmap,
+                resolution: app.analysisConfig.resolution,
+                contactEmail: app.analysisConfig.contactEmail,
+                contactPhone: app.analysisConfig.contactPhone,
+                area: app.analysisConfig.area,
+                timestamp: app.analysisConfig.timestamp,
+                coordinateCount: app.analysisConfig.polygonCoordinates.length
+            });
+
+            // **SEND EMAIL WITH COORDINATES AND OPTIONS - CORE FUNCTIONALITY**
+            const emailSent = await sendAnalysisEmail();
+
+            // Start the analysis process
+            const area = app.analysisConfig.area;
+            
+            // Update analyze button
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            analyzeBtn.disabled = true;
+            
+            // Show detailed notification
+            const configSummary = [
+                `Resolution: ${app.analysisConfig.resolution}`,
+                app.analysisConfig.gradientHeatmap ? 'With temporal heatmap' : 'Standard analysis',
+                `Area: ${area.toFixed(2)} hectares`,
+                `Points: ${app.analysisConfig.polygonCoordinates.length}`
+            ].join(' • ');
+            
+            const notificationMessage = emailSent ? 
+                `🚀 Analysis started & coordinates sent to Server! ` :
+                `🚀 Analysis started! ${configSummary} (Email delivery failed - check console for data)`;
+            
+            showNotification(notificationMessage, emailSent ? 'success' : 'info');
+            
+            // Simulate processing time based on configuration
+            let processingTime = app.analysisConfig.resolution === 'high' ? 4000 : 3000;
+            if (app.analysisConfig.gradientHeatmap) processingTime *= 1.5;
+            
+            setTimeout(() => {
+                analyzeBtn.innerHTML = '<i class="fas fa-check-circle"></i> Analysis Complete';
+                
+                const successMessage = emailSent ?
+                    `✅ Analysis complete for ${area.toFixed(1)} hectares! Data successfully sent to Server` :
+                    `✅ Analysis complete for ${area.toFixed(1)} hectares! (Email failed - coordinates logged to console)`;
+                
+                showNotification(successMessage, 'success');
+                
+                // Add result popup to polygon
+                if (app.drawnLayer) {
+                    const configDetails = [
+                        `Resolution: ${app.analysisConfig.resolution.charAt(0).toUpperCase() + app.analysisConfig.resolution.slice(1)}`,
+                        app.analysisConfig.gradientHeatmap ? '📊 Temporal heatmap included' : '📋 Standard analysis',
+                        `📧 Data sent to: Server`,
+                        `📍 Coordinates: ${app.analysisConfig.polygonCoordinates.length} points captured`,
+                        `👤 User contact: ${app.analysisConfig.contactEmail || app.analysisConfig.contactPhone}`,
+                        `📅 Timestamp: ${new Date(app.analysisConfig.timestamp).toLocaleString()}`
+                    ];
+
+                    app.drawnLayer.bindPopup(`
+                        <div style="text-align: center; padding: 0.5rem;">
+                            <strong style="color: #10b981; font-size: 1.2rem;">📊 Analysis Complete</strong><br><br>
+                            <div style="margin: 1rem 0;">
+                                <div style="font-size: 1.1rem; font-weight: bold; color: #10b981;">
+                                    Area: ${area.toFixed(2)} hectares
+                                </div>
+                                <div style="color: #3b82f6; margin: 0.5rem 0;">
+                                    Status: ${emailSent ? '✅ Successfully Processed & Sent' : '⚠️ Processed (Email Failed)'}
+                                </div>
+                            </div>
+                            <div style="text-align: left; font-size: 0.85rem; color: #94a3b8; line-height: 1.4;">
+                                ${configDetails.map(detail => `• ${detail}`).join('<br>')}
+                            </div>
+                        </div>
+                    `).openPopup();
+                }
+                
+                // Reset button after delay
+                setTimeout(() => {
+                    analyzeBtn.innerHTML = '<i class="fas fa-rocket"></i> Start Analysis';
+                    analyzeBtn.disabled = false;
+                }, 5000);
+                
+            }, processingTime);
+        }
+
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        function showNotification(message, type = 'info') {
+            // Remove existing notifications
+            const existing = document.querySelectorAll('.notification');
+            existing.forEach(n => n.remove());
+            
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            // Auto remove
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 400);
+            }, 5000);
+        }
+
+        // Add some map interaction improvements
+        function enhanceMapExperience() {
+            if (!app.map) return;
+            
+            // Add scale control
+            L.control.scale({
+                position: 'bottomleft',
+                metric: true,
+                imperial: false
+            }).addTo(app.map);
+            
+            // Custom zoom control styling
+            const zoomControl = app.map.zoomControl;
+            if (zoomControl) {
+                const container = zoomControl.getContainer();
+                container.style.border = '1px solid rgba(148, 163, 184, 0.2)';
+                container.style.borderRadius = '12px';
+                container.style.overflow = 'hidden';
+                container.style.backgroundColor = 'rgba(15, 23, 42, 0.95)';
+                container.style.backdropFilter = 'blur(20px)';
+                container.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.3)';
+            }
+
+            // Add loading indicator for tiles
+            app.map.on('layeradd', function() {
+                showNotification('🌍 Loading satellite imagery...', 'info');
+            });
+
+            app.map.on('load', function() {
+                showNotification('🛰️ Satellite imagery loaded successfully!', 'success');
+            });
+        }
+
+        // Initialize enhancements after map loads
+        setTimeout(enhanceMapExperience, 1000);
+
+        // Add smooth transitions and micro-interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add hover effects to interactive elements
+            const interactiveElements = document.querySelectorAll('.control-btn, .welcome-btn, .search-bar');
+            
+            interactiveElements.forEach(element => {
+                element.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-1px)';
+                });
+                
+                element.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+
+            // Add typing effect to search placeholder
+            const searchBar = document.getElementById('searchBar');
+            const placeholders = [
+                'Search any location worldwide...',
+                'Try "New York", "Tokyo", or "Paris"...',
+                'Enter coordinates like "40.7128, -74.0060"...',
+                'Search for cities, landmarks, or addresses...'
+            ];
+            
+            let currentPlaceholder = 0;
+            setInterval(() => {
+                if (!searchBar.value && document.activeElement !== searchBar) {
+                    currentPlaceholder = (currentPlaceholder + 1) % placeholders.length;
+                    searchBar.placeholder = placeholders[currentPlaceholder];
+                }
+            }, 4000);
+        });
+
+        // Handle window resize for responsive design
+        window.addEventListener('resize', function() {
+            if (app.map) {
+                app.map.invalidateSize();
+            }
+        });
+
+        // Add keyboard shortcuts info
+        document.addEventListener('keydown', function(e) {
+            if (e.key === '?' && e.shiftKey) {
+                showNotification('🔥 Shortcuts: ESC to stop drawing, ENTER to finish polygon, / to focus search', 'info');
+            }
+            
+            if (e.key === '/' && !e.target.matches('input')) {
+                e.preventDefault();
+                document.getElementById('searchBar').focus();
+            }
+        });
+
+        // Clear search cache periodically to prevent memory buildup
+        setInterval(() => {
+            if (app.searchCache.size > 50) {
+                app.searchCache.clear();
+                console.log('Search cache cleared');
+            }
+        }, 300000); // Every 5 minutes
+
+        // Add debug function for testing and manual data retrieval
+        window.debugFarmEye = function() {
+            console.log('🔧 FarmEye Debug Info:', {
+                app,
+                hasDrawnLayer: !!app.drawnLayer,
+                polygonPoints: app.polygonPoints.length,
+                savedCoordinates: app.analysisConfig.polygonCoordinates.length,
+                analysisConfig: app.analysisConfig,
+                searchCacheSize: app.searchCache.size,
+                emailConfig: app.emailConfig
+            });
+            
+            // Show formatted coordinates for manual copy
+            if (app.analysisConfig.polygonCoordinates.length > 0) {
+                console.log('📍 Formatted Coordinates for Manual Use:');
+                console.log('JSON Format:', JSON.stringify(app.analysisConfig.polygonCoordinates, null, 2));
+                console.log('CSV Format:', app.analysisConfig.polygonCoordinates.map(coord => `${coord[0]},${coord[1]}`).join('\n'));
+                console.log('Complete Analysis Data:', formatEmailMessage());
+            }
+        };
+
+        // Show email setup instructions in console
+        console.log(`
+🚀 FARMEYE EMAIL INTEGRATION SETUP INSTRUCTIONS:
+
+1. Go to https://www.emailjs.com/ and create a free account
+2. Create a new email service (Gmail, Outlook, etc.)
+3. Create a new email template with these variables:
+   - {{to_email}}
+   - {{from_name}}
+   - {{subject}}
+   - {{message}}
+   - {{coordinates_json}}
+   - {{analysis_config}}
+   - {{area_size}}
+   - {{user_email}}
+   - {{user_phone}}
+
+4. Replace these values in the code:
+   - YOUR_PUBLIC_KEY_HERE
+   - YOUR_SERVICE_ID_HERE  
+   - YOUR_TEMPLATE_ID_HERE
+
+5. The system will automatically send all analysis data to: chinmaykamjith@gmail.com
+
+📧 Current target email: ${app.emailConfig.targetEmail}
+🔧 Debug function available: debugFarmEye()
+        `);
+    </script>
+</body>
+</html>
